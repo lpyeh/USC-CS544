@@ -27,7 +27,7 @@ def get_stopwords(text):
             if k not in data:
                 data[k] = 0
             data[k] += v
-    stopwords = [k for k, v in data.items() if v > 150 or len(k) <= 2]
+    stopwords = [k for k, v in data.items() if v > 250 or len(k) <= 2]
     stopwords.append("them")
     stopwords.append("then")
     stopwords.append("she")
@@ -41,6 +41,8 @@ def get_stopwords(text):
     stopwords.append("you")
     stopwords = list(set(stopwords))
     return stopwords
+
+
             
         
 
