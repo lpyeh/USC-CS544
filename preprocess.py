@@ -19,15 +19,12 @@ def word_count(text):
     return Counter(text)
 
 
-def get_stopwords(text):
+def get_stopwords(word_counts):
     stopwords = []
-    data = {}
-    for words in text:
-        for k, v in Counter(tokenize(words)).items():
-            if k not in data:
-                data[k] = 0
-            data[k] += v
-    stopwords = [k for k, v in data.items() if v > 250 or len(k) <= 2]
+    for label, counts in word_counts.items():
+        for k, v in counts.items():
+            if v > 150:
+                stopwords.append(k)
     stopwords.append("them")
     stopwords.append("then")
     stopwords.append("she")
