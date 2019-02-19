@@ -36,12 +36,24 @@ def idf(X, vocab):
 
 
 def tfidf(doc, X, vocab):
-    tfidf = defaultdict(float)
+    tfidf = list()
+    idf_vec = idf(X, vocab)
+
+    for doc in X:
+        tf_vec = tf(doc)
+        doc_list = []
+        for word in vocab:
+            doc_list.append(tf_vec[word] * idf_vec[word])
+        tfidf.append(doc_list)
+    return tfidf
+    
+    """
     tf_vec = tf(doc)
     idf_vec = idf(X, vocab)
     for word in doc:
         tfidf[word] = tf_vec[word] * idf_vec[word]
     print(tfidf)
     return tfidf
+    """
 
 

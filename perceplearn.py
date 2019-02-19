@@ -6,18 +6,21 @@ import glob
 from preprocess import *
 import os
 import json
-import numpy
-
+import numpy as np
+import sklearn
+from sklearn.metrics import precision_score as precision, recall_score as recall, f1_score as f1
 """
-Training file for Naive Bayes program for CSCI 544.
+Training file for Perceptron program for CSCI 544.
 
 Author: Leigh Yeh
 Date: 1/31/2019
 University of Southern California
 """
 
-def load_data():
-    all_files = glob.glob(os.path.join(input_path, '*/*/*/*.txt'))
+
+def load_data(path):
+    print("Loading Data")
+    all_files = glob.glob(os.path.join(path, '*/*/*/*.txt'))
     train = []
     positive_train = []
     truthful_train = []
@@ -25,89 +28,114 @@ def load_data():
     for file_ in all_files:
         class1, class2, fold, fname = file_.split('/')[-4:]
         text = open(file_).read()
-        train.append(text)
+        train.append(tokenize(clean(text)))
+        
         positive_train.append(1) if 'positive' in class1 else positive_train.append(-1)
         truthful_train.append(1) if 'truthful' in class2 else truthful_train.append(-1)
 
-    train = clean(train)
-    return train, positive_train, truthful_train
+    positive_train = np.array(positive_train, dtype = np.int32)
+    # train = np.array(train, np.float32)
+    # return train, positive_train, truthful_train
+    return train, positive_train
 
-def shuffle(data):
+
+def vectorize(X, vocab, method):
+    print("Vectorizing Data")
+    if method == 'count':
+        data = word_count(X, vocab)
+    elif method == 'tfidf':
+        data = np.array(tfidf(X, vocab), dtype=np.float32)
+    return data
+
+"""
+def shuffle(X):
+"""
 
 
-
-def vanilla_train(X, y, learning_rate=0.1, num_epochs=100):
+def vanilla_train(X, y_train, num_epochs=40):
+    print("-----Vanilla Perceptron----")
     epoch = 0
     # TODO: length is definitely ont len(X[0]), need to figure this out
-    w = np.zeros(len(X[0]))
     num_docs = len(X)
+    w = np.zeros(len(vocab))
     bias = 0
 
     for epoch in range(num_epochs):
-        for i in range(num_docs):
-            x = X[i]
-            y = y[i]
+        print("epoch: {}".format(epoch))
+
+        for x, y in zip(X, y_train):
             
-            activation = np.dot(w[i], x) + b
+            activation = np.sum(np.multiply(x, w)) + bias
             
             if y * activation > 0:
                 continue
             else:
+                w += np.multiply(x, y)
                 # TODO: Do we need to loop through this whole thing again??
-                for j in range(num_docs):
-                    w[j] = w[j] + (y * x[j])
-                bias = bias + y
+                bias += y
     return w, bias
 
 
-def average_train(X, y, learning_rate = 0.1, num_epochs=100):
-    weights = np.zeros(1)
-    beta = np.zeros(1)
-    weight_mat = np.zeros(2)
-    idx = 0
+def averaged_train(X, y_train, num_epochs=40):
+    print("-------Averaged Perceptron--------")
+    weights = np.zeros(len(vocab))
+    u = np.zeros(len(vocab))
     count = 1
-    epoch = 1
     bias = 0
+    beta = 0
 
-    while epoch < range(num_epochs):
-        for i in range(len(X)):
-            x = X[i]
-            y = y[i]
-            if y * (np.dot(weights, x)) > 0:
-                count += 1
-            else:
-                idx += 1
-                weights_mat[idx,] = 
-                weights[ = w + (y * x)
-                bias = bias + y
-                cached = cached + (y * count * x)
-                beta = beta + (y * count)
-                epoch += 1
-            # count += 1
+    for epoch in range(num_epochs):
+        print("epoch: ", epoch)
+        for x, y in zip(X, y_train):
+            if y * (np.sum(np.multiply(weights, x)) + bias) <= 0:
+                weights += np.multiply(x, y)
+                u += np.multiply(x, y) * count
+                bias += y
+                beta += (y * count)
+            count += 1
+    avg_w = weights - (u/count)
+    avg_b = bias - (beta/count)
+    return avg_w, avg_b
 
-    return 
-                # ENDED HERE
 
-def test(weights, bias, X_test):
+def predict(X_test, weights, bias):
     result = []
-    for x, w in zip(X_test, weights):
-        if np.dot(w, x) < 0:
-            result.append(0)
-        else:
+    for x in X_test:
+        activation = np.sum(np.multiply(x, weights)) + bias
+        if activation > 0:
             result.append(1)
+        else:
+            result.append(-1)
     return result
 
 
 
-def write(write_file):
     write_file = open(write_file, 'w')
     json.dump([log_priors, label_count, vocab, word_counts], write_file, indent=2)
     write_file.close()
 
 if __name__=='__main__':
-    input_path = sys.argv[-1]
-    X_train, y_train_pos, y_train_truth = load_data()
-    word_counts, log_priors, label_count, vocab = train(X_train, y_train_pos, y_train_truth)
-    write('nbmodel.txt')
+    input_path = sys.argv[1]
+    output_path = sys.argv[2]
+    X_train, y_train_pos = load_data(input_path)
+    X_test, y_test_pos = load_data(output_path)
+    vocab = get_vocab(X_train, vocab_length=2000)
+    data = vectorize(X_train, vocab, method='count')
+    test = vectorize(X_test, vocab, method='count')
+
+    #------vanilla-------#
+    weights_vanilla, bias_vanilla = vanilla_train(data, y_train_pos) 
+    vanilla_results = predict(test, weights_vanilla, bias_vanilla)
+    
+
+    #------averages-------#
+    averaged_weights, averaged_bias = averaged_train(data, y_train_pos)
+    avg_results = predict(test, averaged_weights, averaged_bias)
+
+    print("-----Vanilla Results------")
+    print("recall: {} | precision: {} | f1: {}".format(recall(y_test_pos, vanilla_results), precision(y_test_pos, vanilla_results), f1(y_test_pos, vanilla_results)))
+    print("-----Avg Results-------")
+    print("recall: {} | precision: {} | f1: {}".format(recall(y_test_pos, avg_results), precision(y_test_pos, avg_results), f1(y_test_pos, avg_results)))
+
 
 
