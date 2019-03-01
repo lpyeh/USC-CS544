@@ -26,7 +26,7 @@ def word_count(docs, vocabulary):
             if word in count:
                 doc_words.append(count[word])
             else:
-                doc_words.append(0)
+                doc_words.append(0.0)
         vector.append(doc_words)
     return vector
 
@@ -37,14 +37,16 @@ def get_vocab(docs, vocab_length):
     for doc in docs:
         count = Counter(doc)
         for word in count:
-            if len(word) < 2 or word in stopwords:
+            if len(word) <= 2 or word in stopwords:
                 continue;
             if word in vocab:
-                vocab[word] += count[word]
+                if count[word] < 10:
+                    continue
+                else:
+                    vocab[word] += count[word]
             else:
                 vocab[word] = 0.0
                 vocab[word] = count[word]
-        # vocab.extend(list(set(doc)))
     vocab = sorted(vocab.items(), key=lambda k_v:-k_v[1])
     vocab = [x[0] for x in vocab][:vocab_length]
     return vocab
